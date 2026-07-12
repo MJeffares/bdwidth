@@ -97,6 +97,13 @@ def is_ccd_snapshot_outlier(width, min_width, max_width):
     return width < min_width or width > max_width
 
 
+def calculate_flowrate_percentage(nominal_diameter, filament_width,
+                                  correction_scale=1.0):
+    raw_percentage = nominal_diameter ** 2 / filament_width ** 2 * 100
+    scaled_percentage = 100 + (raw_percentage - 100) * correction_scale
+    return round(scaled_percentage, 2)
+
+
 def write_ccd_snapshot_files(outdir, stamp, frames, raw_bytes, metadata=None,
                              render_png=True):
     if not frames:
@@ -418,7 +425,6 @@ class BDWidthMotionSensor:
             self.runout_helper = filament_switch_sensor.RunoutHelper(config)
         except Exception as e:
             self.runout_helper = filament_switch_sensor.RunoutHelper(config,self)
-        self.get_status = self.runout_helper.get_status
         self.extruder = None
         self.estimated_print_time = None
         # Initialise internal state
@@ -433,10 +439,14 @@ class BDWidthMotionSensor:
         self.tolerance_count = config.getfloat('tolerance_count', 2, above=1)
 
         self.flowrate_adjust_length = config.getfloat('flowrate_adjust_length', 5., above=1.)
+        self.flowrate_correction_scale = config.getfloat(
+            'flowrate_correction_scale', 1.0, minval=0.)
 
         self.is_active =config.get('enable')    
         self.min_diameter=config.getfloat('min_diameter', 1.0)
         self.linear_motion=config.getfloat('motion_linear_coefficient', 42.8)
+        self.motion_direction_inverted = config.getboolean(
+            'motion_direction_inverted', True)
         self.max_diameter=config.getfloat('max_diameter', 1.9)
         self.min_plausible_diameter = config.getfloat(
             'min_plausible_diameter', 1.5, above=0.)
@@ -737,7 +747,8 @@ class BDWidthMotionSensor:
             lastMotionReading = ((buffer[3] << 8) + buffer[2])&0xffff
             if lastMotionReading>32767 :
                 lastMotionReading = lastMotionReading - 65536
-            lastMotionReading = -lastMotionReading # change the default dir
+            if self.motion_direction_inverted:
+                lastMotionReading = -lastMotionReading
             filament_width = raw_width*0.00525
             if is_ccd_snapshot_outlier(
                 filament_width, self.ccd_snapshot_min_diameter,
@@ -805,8 +816,9 @@ class BDWidthMotionSensor:
                     filament_width = item[1]
                     if ((filament_width <= self.max_diameter)
                         and (filament_width >= self.min_diameter)):
-                        percentage = round(self.nominal_filament_dia**2
-                                           / filament_width**2 * 100,2)
+                        percentage = calculate_flowrate_percentage(
+                            self.nominal_filament_dia, filament_width,
+                            self.flowrate_correction_scale)
                         self.gcode.run_script("M221 S" + str(percentage))
                         if self.is_debug == True:
                             self.gcode.respond_info("M221 S:%.3f ; %s, width:%.3f" %  (percentage,self.bd_name,filament_width))
@@ -999,10 +1011,29 @@ class BDWidthMotionSensor:
         }      
         
     def get_status(self, eventtime):
-        return {'Diameter': self.self.lastFilamentWidthReading,
-                'Raw':self.raw_width,
-                'Motion':self.lastMotionReading,
-                'active':self.is_active}
+        status = dict(self.runout_helper.get_status(eventtime))
+        diameter = float(self.lastFilamentWidthReading)
+        valid_width = (
+            diameter >= self.min_plausible_diameter
+            and diameter <= self.max_plausible_diameter)
+        if self.lastMotionReading > 0:
+            motion_direction = "forward"
+        elif self.lastMotionReading < 0:
+            motion_direction = "reverse"
+        else:
+            motion_direction = "stopped"
+        status.update({
+            'diameter': diameter,
+            'raw_width': int(self.raw_width),
+            'motion': int(self.lastMotionReading),
+            'motion_direction': motion_direction,
+            'motion_direction_inverted': bool(self.motion_direction_inverted),
+            'total_motion_mm': float(self.actual_total_move)
+                               / self.linear_motion,
+            'valid_width_reading': bool(valid_width),
+            'active': self.is_active,
+        })
+        return status
                 
     def cmd_info_enable(self, gcmd):
         self.is_debug = True

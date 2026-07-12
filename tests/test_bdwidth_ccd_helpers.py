@@ -221,6 +221,28 @@ class BDWidthCCDHelperTest(unittest.TestCase):
             ["4", "10", "5", "10", "2", "fila_width_0: read data error"])
 
 
+    def test_calculate_flowrate_percentage_scales_adjustment_toward_100(self):
+        bdwidth = load_bdwidth_module()
+
+        raw = bdwidth.calculate_flowrate_percentage(1.75, 1.80, 1.0)
+        half = bdwidth.calculate_flowrate_percentage(1.75, 1.80, 0.5)
+        disabled = bdwidth.calculate_flowrate_percentage(1.75, 1.80, 0.0)
+
+        self.assertEqual(raw, round(1.75 ** 2 / 1.80 ** 2 * 100, 2))
+        self.assertEqual(half, round(100 + (raw - 100) * 0.5, 2))
+        self.assertEqual(disabled, 100.0)
+
+    def test_calculate_flowrate_percentage_allows_stronger_than_default_correction(self):
+        bdwidth = load_bdwidth_module()
+
+        raw = bdwidth.calculate_flowrate_percentage(1.75, 1.70, 1.0)
+        stronger = bdwidth.calculate_flowrate_percentage(1.75, 1.70, 1.2)
+
+        self.assertGreater(raw, 100.0)
+        self.assertEqual(stronger, round(100 + (raw - 100) * 1.2, 2))
+
+
+
 class FakeSerial:
     def __init__(self, chunks):
         self.chunks = list(chunks)

@@ -86,6 +86,7 @@ max_diameter: 2.0
 
 runout_delay_length: 8.0
 flowrate_adjust_length: 5
+flowrate_correction_scale: 1.0
 pause_on_runout: False
 sample_time: 2
 sensor_to_nozzle_length: 870
@@ -115,6 +116,7 @@ ccd_snapshot_png_limit_per_print: 1
 There are two related ranges:
 
 - `min_diameter` / `max_diameter`: used by the existing flow/runout logic.
+- `flowrate_correction_scale`: scales BDWidth flow compensation toward 100%. `1.0` keeps upstream behavior, `0.5` applies half correction, `0.0` disables flow compensation while keeping width/motion state active.
 - `min_plausible_diameter` / `max_plausible_diameter`: fork-specific hard
   discard range. Values outside this range are captured for diagnostics, then
   ignored.
