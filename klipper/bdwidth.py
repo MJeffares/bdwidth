@@ -640,6 +640,16 @@ class BDWidthMotionSensor:
                 logging.warning(
                     "%s: CCD snapshot captured no valid frames raw_bytes=%d"
                     % (self.bd_name, len(result["raw"])))
+
+                # write the raw bytes to a file for debugging
+                try:
+                    os.makedirs(self.ccd_snapshot_dir, exist_ok=True)
+                    fail_path = os.path.join(self.ccd_snapshot_dir, "failed_snapshot_%s.raw" % stamp)
+                    with open(fail_path, "wb") as f:
+                        f.write(result["raw"])
+                except Exception:
+                    pass
+
                 return
             render_png = True
             if (self.ccd_snapshot_defer_png_during_print
