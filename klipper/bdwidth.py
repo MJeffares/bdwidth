@@ -643,12 +643,17 @@ class BDWidthMotionSensor:
 
                 # write the raw bytes to a file for debugging
                 try:
-                    os.makedirs(self.ccd_snapshot_dir, exist_ok=True)
-                    fail_path = os.path.join(self.ccd_snapshot_dir, "failed_snapshot_%s.raw" % stamp)
+                    debug_dir = os.path.abspath(os.path.expanduser(self.ccd_snapshot_dir))
+                    os.makedirs(debug_dir, exist_ok=True)
+                    fail_path = os.path.join(debug_dir, "failed_snapshot_%s.raw" % time.strftime("%Y%m%d_%H%M%S"))
+                    
                     with open(fail_path, "wb") as f:
                         f.write(result["raw"])
-                except Exception:
-                    pass
+                        
+                    logging.info("%s: SUCCESS - Saved %d bytes of raw debug data to %s" % (self.bd_name, len(result["raw"]), fail_path))
+                except Exception as e:
+                    logging.error("%s: FAILED to write debug file! Error: %s", self.bd_name, str(e), exc_info=True)               
+                return
 
                 return
             render_png = True
