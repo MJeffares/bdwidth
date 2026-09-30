@@ -33,9 +33,10 @@ The hardware, firmware files, CAD, and upstream documentation remain based on th
 ### Additional changes made by me (MJeffares):
 
 - The CCD snapshot debugging from SukbeomH's fork are failing for me so I created this fork to be able to debug this issue.
-- I've made the following change:
+- I've made the following changes:
   - If the sensor fails to return valid CCD frames or times out during a snapshot capture, the raw serial buffer bytes are immediately written to a timestamped file (`failed_snapshot_TIMESTAMP.raw`) within the configured snapshot directory (safely ensuring directory creation first).
   - This prevents raw data loss and allows offline analysis of the exact serial byte stream when snapshot issues or hardware-to-host glitches occur.
+  - Updated `install.sh` to automatically add `bdwidth` to Moonraker's update manager configuration (`moonraker.conf`), enabling updates directly through Mainsail/Fluidd.
 
 ## When To Use This Fork
 
@@ -81,6 +82,21 @@ git reset --hard origin/main
 ```
 
 Then restart Klipper.
+
+## Moonraker Update Manager Integration
+
+Running `install.sh` automatically attempts to locate your `moonraker.conf` file (checking `~/printer_data/config/` and `~/klipper_config/`) and appends the update manager block if it isn't already present. This enables seamless updates directly via Mainsail or Fluidd.
+
+If `install.sh` cannot find your `moonraker.conf` file automatically, you can manually add the following section to `moonraker.conf`:
+
+```ini
+[update_manager bdwidth]
+type: git_repo
+path: ~/bdwidth
+origin: https://github.com/MJeffares/bdwidth.git
+primary_branch: main
+managed_services: klipper
+```
 
 ## Klipper Configuration
 
