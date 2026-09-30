@@ -1,66 +1,83 @@
 # BDWidth Klipper Fork
 
-This is a fork of [`markniu/bdwidth`](https://github.com/markniu/bdwidth) with
-Klipper-side robustness and diagnostics added for USB BDWidth sensors.
+This repository is a fork that builds upon the original work of [`markniu/bdwidth`](https://github.com/markniu/bdwidth) and the subsequent robustness improvements made by [`SukbeomH/bdwidth`](https://github.com/SukbeomH/bdwidth). It adds further diagnostic, robustness, and debugging capabilities for USB BDWidth sensors.
 
-The hardware, firmware files, CAD, and upstream documentation remain based on
-the original project. This fork focuses on safer host behavior during long
-prints.
+The hardware, firmware files, CAD, and upstream documentation remain based on the original project. This fork focuses on safer host behavior during long prints and advanced debugging.
 
 ## What This Fork Changes
 
-- Hardens USB frame parsing for Klipper.
-  - Accepts only the expected 5-byte width/motion frame with the newline
-    terminator in the expected position.
-  - Rejects malformed frames before they can update flow, motion, or runout
-    state.
+### Changes made by SukbeomH (from Mark's repository):
+
+- **Hardens USB frame parsing for Klipper:**
+  - Accepts only the expected 5-byte width/motion frame with the newline terminator in the expected position.
+  - Rejects malformed frames before they can update flow, motion, or runout state.
   - Fixes signed 16-bit motion conversion.
 
-- Adds configurable plausible-width filtering.
+- **Configurable plausible-width filtering:**
   - Default discard range is `1.5mm` to `2.0mm`.
   - Values outside that range are ignored before they update BDWidth state.
-  - This is intentionally stricter than a physical maximum filter because this
-    setup treats those readings as sensor/serial outliers.
+  - This is intentionally stricter than a physical maximum filter because this setup treats those readings as sensor/serial outliers.
 
-- Adds CCD outlier diagnostics.
-  - On an outlier, the plugin can capture a CCD waveform from the same serial
-    connection used by Klipper.
+- **CCD outlier diagnostics:**
+  - On an outlier, the plugin can capture a CCD waveform from the same serial connection used by Klipper.
   - It saves `raw`, `csv`, and `json` diagnostic files immediately.
   - During a print, PNG graph rendering is deferred to reduce host load.
   - After printing returns to idle/ready, at most one deferred PNG is rendered.
 
-- Prevents duplicate CSV logging handlers after reloads/restarts.
+- **Cleaner Logging:**
+  - Prevents duplicate CSV logging handlers after reloads/restarts.
 
-- Keeps the upstream `ENABLE_MOTION`, `ENABLE_WIDTH`, and `ENABLE_ALL` command
-  behavior.
+- **Command behavior compatibility:**
+  - Keeps the upstream `ENABLE_MOTION`, `ENABLE_WIDTH`, and `ENABLE_ALL` command behavior.
+
+### Additional changes made by me (MJeffares):
+
+- The CCD snapshot debugging from SukbeomH's fork are failing for me so I created this fork to be able to debug this issue.
+- I've made the following change:
+  - If the sensor fails to return valid CCD frames or times out during a snapshot capture, the raw serial buffer bytes are immediately written to a timestamped file (`failed_snapshot_TIMESTAMP.raw`) within the configured snapshot directory (safely ensuring directory creation first).
+  - This prevents raw data loss and allows offline analysis of the exact serial byte stream when snapshot issues or hardware-to-host glitches occur.
 
 ## When To Use This Fork
 
-Use this fork if you run BDWidth through Klipper USB mode and want defensive
-handling for occasional impossible width readings such as `0mm`, `2.2mm`, or
-hundreds of millimeters.
-
-If your sensor is clean and stable, the original project may be enough. This
-fork is intended for printers where BDWidth data is useful but must not be
-allowed to disturb long prints when a serial or optical outlier appears.
+Don't use this fork, you should only use SukbeomH's fork or Mark's original repository. This fork offers no additional features for end users at this stage.
 
 ## Installation
 
+### Option A: New Installation (pointing to my fork)
+
 ```bash
 cd ~
-git clone https://github.com/SukbeomH/bdwidth.git
+git clone https://github.com/MJeffares/bdwidth.git
 chmod +x ~/bdwidth/klipper/install.sh
 ~/bdwidth/klipper/install.sh
 ```
 
-If you already installed the original project, switch the repository remote:
+### Option B: Updating from Mark's repository (`markniu/bdwidth`)
+
+If you already have `markniu`'s original project installed, switch the repository remote to my fork, fetch the changes, and reset:
 
 ```bash
 cd ~/bdwidth
-git remote set-url origin https://github.com/SukbeomH/bdwidth.git
+git remote set-url origin https://github.com/MJeffares/bdwidth.git
 git remote add upstream https://github.com/markniu/bdwidth.git 2>/dev/null || true
 git fetch origin main
 git reset --hard origin/main
+~/bdwidth/klipper/install.sh
+```
+
+Then restart Klipper.
+
+### Option C: Updating from SukbeomH's repository (`SukbeomH/bdwidth`)
+
+If you have `SukbeomH`'s fork installed, switch the repository remote to my fork, fetch the changes, and reset:
+
+```bash
+cd ~/bdwidth
+git remote set-url origin https://github.com/MJeffares/bdwidth.git
+git remote add sukbeomh https://github.com/SukbeomH/bdwidth.git 2>/dev/null || true
+git fetch origin main
+git reset --hard origin/main
+~/bdwidth/klipper/install.sh
 ```
 
 Then restart Klipper.
