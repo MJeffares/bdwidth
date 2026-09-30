@@ -83,6 +83,34 @@ git reset --hard origin/main
 
 Then restart Klipper.
 
+### Optional: Saving Disk Space (Blobless Clone)
+
+Because this fork retains the original project's heavy 3D CAD and STEP files, a standard `git clone` will download all of those unused assets to your printer's host (e.g., Raspberry Pi).
+
+To save space while keeping the `.git` history intact for Moonraker Update Manager compatibility, you can perform a "blobless clone." This tells Git to only download the file contents (like the Python scripts) when they are actually needed.
+
+**For a New Installation:**
+
+```bash
+cd ~
+git clone --filter=blob:none https://github.com/MJeffares/bdwidth.git ~/bdwidth
+chmod +x ~/bdwidth/klipper/install.sh
+~/bdwidth/klipper/install.sh
+```
+
+If you already installed a previous fork:
+If you already have markniu's or SukbeomH's repository cloned, the heavy files are already on your disk. To reclaim that space, delete the folder entirely and perform a fresh blobless clone:
+
+```bash
+cd ~
+rm -rf ~/bdwidth
+git clone --filter=blob:none https://github.com/MJeffares/bdwidth.git ~/bdwidth
+chmod +x ~/bdwidth/klipper/install.sh
+~/bdwidth/klipper/install.sh
+```
+
+Then restart Klipper.
+
 ## Moonraker Update Manager Integration
 
 Running `install.sh` automatically attempts to locate your `moonraker.conf` file (checking `~/printer_data/config/` and `~/klipper_config/`) and appends the update manager block if it isn't already present. This enables seamless updates directly via Mainsail or Fluidd.
